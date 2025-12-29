@@ -5,9 +5,11 @@ set -euo pipefail
 # Arguments:
 #   $1 = source folder
 #   $2 = template name
+#   $3 = optional album name (only needed if template has {{ALBUM}})
 upload_to_immich() {
     local SRC="$1"
     local TEMPLATE="$2"
+    local ALBUM_NAME="${3:-}"   # optional
 
     # Validate source folder
     if [[ ! -d "$SRC" ]]; then
@@ -16,17 +18,26 @@ upload_to_immich() {
     fi
 
     # Load template file
-    if [[ ! -f ".upload-templates.env" ]]; then
+    if [[ ! -f "upload-templates.env" ]]; then
         echo "Template file upload-templates.env not found"
         return 1
     fi
-    source .upload-templates.env
+    source upload-templates.env
 
     # Get template flags
-    TEMPLATE_FLAGS="${!TEMPLATE:-}"
+    local TEMPLATE_FLAGS="${!TEMPLATE:-}"
     if [[ -z "$TEMPLATE_FLAGS" ]]; then
         echo "Template '$TEMPLATE' not found in upload-templates.env"
         return 1
+    fi
+
+    # Replace {{ALBUM}} placeholder if present
+    if [[ "$TEMPLATE_FLAGS" == *"{{ALBUM}}"* ]]; then
+        if [[ -z "$ALBUM_NAME" ]]; then
+            echo "Error: Template '$TEMPLATE' requires an album name"
+            return 1
+        fi
+        TEMPLATE_FLAGS="${TEMPLATE_FLAGS//\{\{ALBUM\}\}/$ALBUM_NAME}"
     fi
 
     # Validate immich-go executable from .env

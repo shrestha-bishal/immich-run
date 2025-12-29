@@ -7,14 +7,18 @@ Usage: $0 [OPTIONS] --source <folder>
 
 Options:
   -o, --organise               Run the media organisation
-  -u, --upload TEMPLATE        Upload folder using specified immich-go template
+  -u, --upload TEMPLATE [ALBUM] Upload folder using specified immich-go template
   -s, --source PATH            Specify source folder (mandatory)
   -h, --help                   Show this help message
+
+Notes:
+  If the template requires an album ({{ALBUM}}), pass the album name as an additional argument after the template.
 EOF
 }
 
 ORGANISE=false
 UPLOAD_TEMPLATE=""
+UPLOAD_ALBUM=""
 SRC=""
 
 # Argument parsing
@@ -26,6 +30,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     -u|--upload)
       UPLOAD_TEMPLATE="$2"
+      # optional album name
+      if [[ $# -ge 3 && "$3" != -* ]]; then
+        UPLOAD_ALBUM="$3"
+        shift 1
+      fi
       shift 2
       ;;
     -s|--source)
@@ -71,7 +80,7 @@ fi
 if [[ -n "$UPLOAD_TEMPLATE" ]]; then
   echo "Running upload with template '$UPLOAD_TEMPLATE'..."
   source ./scripts/upload.sh
-  upload_to_immich "$SRC" "$UPLOAD_TEMPLATE"
+  upload_to_immich "$SRC" "$UPLOAD_TEMPLATE" "$UPLOAD_ALBUM"
 fi
 
 echo "Done."
