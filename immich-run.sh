@@ -29,13 +29,19 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -u|--upload)
-      UPLOAD_TEMPLATE="$2"
-      # optional album name
-      if [[ $# -ge 3 && "$3" != -* ]]; then
-        UPLOAD_ALBUM="$3"
+      # If next arg is missing or another flag → use default
+      if [[ -z "${2:-}" || "$2" == -* ]]; then
+        UPLOAD_TEMPLATE="--into-album Uploads"
         shift 1
+      else
+        UPLOAD_TEMPLATE="$2"
+        # Optional album name
+        if [[ -n "${3:-}" && "$3" != -* ]]; then
+          UPLOAD_ALBUM="$3"
+          shift 1
+        fi
+        shift 2
       fi
-      shift 2
       ;;
     -s|--source)
       SRC="$2"
