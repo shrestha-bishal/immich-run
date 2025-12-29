@@ -6,13 +6,15 @@ show_help() {
 Usage: $0 [OPTIONS] --source <folder>
 
 Options:
-  -o, --organise      Run the media organisation
-  -s, --source PATH   Specify source folder
-  -h, --help          Show this help message
+  -o, --organise               Run the media organisation
+  -u, --upload TEMPLATE        Upload folder using specified immich-go template
+  -s, --source PATH            Specify source folder (mandatory)
+  -h, --help                   Show this help message
 EOF
 }
 
 ORGANISE=false
+UPLOAD_TEMPLATE=""
 SRC=""
 
 # Argument parsing
@@ -21,6 +23,10 @@ while [[ $# -gt 0 ]]; do
     -o|--organise)
       ORGANISE=true
       shift
+      ;;
+    -u|--upload)
+      UPLOAD_TEMPLATE="$2"
+      shift 2
       ;;
     -s|--source)
       SRC="$2"
@@ -38,24 +44,34 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Validate source folder if organise is requested
+# Validate mandatory source
+if [[ -z "$SRC" ]]; then
+  echo "Error: --source <folder> is required"
+  show_help
+  exit 1
+fi
+if [[ ! -d "$SRC" ]]; then
+  echo "Invalid folder path: $SRC"
+  exit 1
+fi
+
+# Load .env
+if [[ -f ".env" ]]; then
+  export $(grep -v '^#' .env | xargs)
+fi
+
+# Step 1: Organise
 if [[ "$ORGANISE" == true ]]; then
-  if [[ -z "$SRC" ]]; then
-    echo "Error: --source <folder> is required for organise"
-    show_help
-    exit 1
-  fi
-  if [[ ! -d "$SRC" ]]; then
-    echo "Invalid folder path: $SRC"
-    exit 1
-  fi
-
-  # Load .env if exists
-  if [[ -f ".env" ]]; then
-    export $(grep -v '^#' .env | xargs)
-  fi
-
-  # Run organiser
+  echo "Running media organisation..."
   source ./scripts/organise.sh
   organise_media "$SRC"
 fi
+
+# Step 2: Upload
+if [[ -n "$UPLOAD_TEMPLATE" ]]; then
+  echo "Running upload with template '$UPLOAD_TEMPLATE'..."
+  source ./scripts/upload.sh
+  upload_to_immich "$SRC" "$UPLOAD_TEMPLATE"
+fi
+
+echo "Done."

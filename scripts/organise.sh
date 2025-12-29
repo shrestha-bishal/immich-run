@@ -65,3 +65,11 @@ organise_media() {
 
   echo "Done."
 }
+
+# Delete any .aae files in the source folder
+shopt -s nullglob
+for f in "$SRC"/*.aae; do
+  echo "Deleting .aae file: $(basename "$f")"
+  rm -f "$f"
+done
+shopt -u nullglob
