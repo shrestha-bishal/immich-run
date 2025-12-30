@@ -30,16 +30,26 @@ organise_media() {
 
   ### Process GoPro files
   [[ -d "$GOPRO_DIR" ]] || mkdir -p "$GOPRO_DIR"
+
   for base in "${!GOPROS[@]}"; do
-    exts=(${GOPROS[$base]})
-    if [[ " ${exts[*]} " == *" mp4 "* ]]; then
+    exts=" ${GOPROS[$base]} "
+
+    if [[ "$exts" == *" mp4 "* ]]; then
       echo "GoPro MP4 found for $(basename "$base"): moving MP4"
-      mv "$base.mp4" "$GOPRO_DIR/" 2>/dev/null || mv "$base.MP4" "$GOPRO_DIR/"
-      [[ -f "$base.lrv" ]] && { echo "Deleting LRV for $(basename "$base")"; rm -f "$base.lrv"; }
-      [[ -f "$base.LRV" ]] && { echo "Deleting LRV for $(basename "$base")"; rm -f "$base.LRV"; }
-    elif [[ " ${exts[*]} " == *" lrv "* ]]; then
+
+      # Move MP4 (any case)
+      mv "$base".[mM][pP]4 "$GOPRO_DIR/"
+
+      # Delete ALL matching LRV files (any case)
+      for lrv in "$base".[lL][rR][vV]; do
+        [[ -f "$lrv" ]] || continue
+        echo "Deleting LRV: $(basename "$lrv")"
+        rm -f "$lrv"
+      done
+
+    elif [[ "$exts" == *" lrv "* ]]; then
       echo "Only LRV found for $(basename "$base"): moving LRV"
-      mv "$base.lrv" "$GOPRO_DIR/" 2>/dev/null || mv "$base.LRV" "$GOPRO_DIR/"
+      mv "$base".[lL][rR][vV] "$GOPRO_DIR/"
     fi
   done
 
@@ -51,7 +61,7 @@ organise_media() {
   done
 
   ### Collect videos (case-insensitive)
-  for f in "$SRC"/*.{mov,MOV}; do
+  for f in "$SRC"/*.{mov,MOV,mp4,MP4,3gp}; do
     [[ -f "$f" ]] || continue
     base="$(basename "${f%.*}")"
     MOVS["$base"]="$f"
