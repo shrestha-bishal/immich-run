@@ -15,32 +15,51 @@ organise_media() {
 
   declare -A PHOTOS
   declare -A MOVS
+  declare -A GOPROS
 
   shopt -s nullglob nocaseglob
 
-  ### Move GoPro files (GX*.MP4 / GX*.LRV)
-  for f in "$SRC"/GX*.{mp4,lrv}; do
-    [[ -d "$GOPRO_DIR" ]] || mkdir -p "$GOPRO_DIR"
-    echo "GoPro file detected: $(basename "$f")"
-    mv "$f" "$GOPRO_DIR/"
+  ### Collect GoPro files (mp4 and lrv) - case insensitive
+  for f in "$SRC"/GX*.{mp4,MP4,lrv,LRV}; do
+    [[ -f "$f" ]] || continue
+    base="${f%.*}"
+    ext="${f##*.}"
+    ext="${ext,,}"  # lowercase
+    GOPROS["$base"]+="$ext "
   done
 
-  # Photos
-  for f in "$SRC"/*.{jpg,jpeg,heic,png}; do
+  ### Process GoPro files
+  [[ -d "$GOPRO_DIR" ]] || mkdir -p "$GOPRO_DIR"
+  for base in "${!GOPROS[@]}"; do
+    exts=(${GOPROS[$base]})
+    if [[ " ${exts[*]} " == *" mp4 "* ]]; then
+      echo "GoPro MP4 found for $(basename "$base"): moving MP4"
+      mv "$base.mp4" "$GOPRO_DIR/" 2>/dev/null || mv "$base.MP4" "$GOPRO_DIR/"
+      [[ -f "$base.lrv" ]] && { echo "Deleting LRV for $(basename "$base")"; rm -f "$base.lrv"; }
+      [[ -f "$base.LRV" ]] && { echo "Deleting LRV for $(basename "$base")"; rm -f "$base.LRV"; }
+    elif [[ " ${exts[*]} " == *" lrv "* ]]; then
+      echo "Only LRV found for $(basename "$base"): moving LRV"
+      mv "$base.lrv" "$GOPRO_DIR/" 2>/dev/null || mv "$base.LRV" "$GOPRO_DIR/"
+    fi
+  done
+
+  ### Collect photos (case-insensitive)
+  for f in "$SRC"/*.{jpg,JPG,jpeg,JPEG,heic,HEIC,png,PNG}; do
+    [[ -f "$f" ]] || continue
     base="$(basename "${f%.*}")"
     PHOTOS["$base"]="$f"
   done
 
-  # Videos
-  for f in "$SRC"/*.mov; do
+  ### Collect videos (case-insensitive)
+  for f in "$SRC"/*.{mov,MOV}; do
+    [[ -f "$f" ]] || continue
     base="$(basename "${f%.*}")"
     MOVS["$base"]="$f"
   done
 
-  ### Process files
+  ### Process videos & Live Photos
   for base in "${!MOVS[@]}"; do
     mov="${MOVS[$base]}"
-
     if [[ -n "${PHOTOS[$base]:-}" ]]; then
       [[ -d "$PHOTO_DIR" ]] || mkdir -p "$PHOTO_DIR"
       photo="${PHOTOS[$base]}"
@@ -63,13 +82,13 @@ organise_media() {
     fi
   done
 
+  ### Delete .aae and .THM files (case-insensitive)
+  for f in "$SRC"/*.{AAE,aae,THM,thm}; do
+    [[ -f "$f" ]] || continue
+    echo "Deleting file: $(basename "$f")"
+    rm -f "$f"
+  done
+
+  shopt -u nullglob nocaseglob
   echo "Organisation Completed."
 }
-
-# Delete any .aae files in the source folder
-shopt -s nullglob
-for f in "$SRC"/*.{AAE,THM}; do
-  echo "Deleting file: $(basename "$f")"
-  rm -f "$f"
-done
-shopt -u nullglob
