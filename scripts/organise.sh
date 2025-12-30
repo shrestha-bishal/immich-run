@@ -9,8 +9,8 @@ organise_media() {
     return 1
   fi
 
-  PHOTO_DIR="$SRC/photos"
-  VIDEO_DIR="$SRC/videos"
+  PHOTO_DIR="$SRC/photo"
+  VIDEO_DIR="$SRC/video"
   GOPRO_DIR="$SRC/gopro"
 
   declare -A PHOTOS
@@ -26,7 +26,7 @@ organise_media() {
   done
 
   # Photos
-  for f in "$SRC"/*.{jpg,jpeg,heic}; do
+  for f in "$SRC"/*.{jpg,jpeg,heic,png}; do
     base="$(basename "${f%.*}")"
     PHOTOS["$base"]="$f"
   done
@@ -63,13 +63,13 @@ organise_media() {
     fi
   done
 
-  echo "Done."
+  echo "Organisation Completed."
 }
 
 # Delete any .aae files in the source folder
 shopt -s nullglob
-for f in "$SRC"/*.aae; do
-  echo "Deleting .aae file: $(basename "$f")"
+for f in "$SRC"/*.{AAE,THM}; do
+  echo "Deleting file: $(basename "$f")"
   rm -f "$f"
 done
 shopt -u nullglob

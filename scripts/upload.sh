@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Function: upload_to_immich
-# Arguments:
-#   $1 = source folder
-#   $2 = template name
-#   $3 = optional album name (only needed if template has {{ALBUM}})
 upload_to_immich() {
     local SRC="$1"
     local TEMPLATE="$2"
-    local ALBUM_NAME="${3:-}"   # optional
+    local ALBUM="${3:-}"
 
     # Validate source folder
     if [[ ! -d "$SRC" ]]; then
@@ -17,35 +12,11 @@ upload_to_immich() {
         return 1
     fi
 
-    # Load template file
-    if [[ ! -f "upload-templates.env" ]]; then
-        echo "Template file upload-templates.env not found"
-        return 1
-    fi
-    source upload-templates.env
-
-    # Get template flags
-    local TEMPLATE_FLAGS="${!TEMPLATE:-}"
-    if [[ -z "$TEMPLATE_FLAGS" ]]; then
-        echo "Template '$TEMPLATE' not found in upload-templates.env"
-        return 1
-    fi
-
-    # Replace {{ALBUM}} placeholder if present
-    if [[ "$TEMPLATE_FLAGS" == *"{{ALBUM}}"* ]]; then
-        if [[ -z "$ALBUM_NAME" ]]; then
-            echo "Error: Template '$TEMPLATE' requires an album name"
-            return 1
-        fi
-        TEMPLATE_FLAGS="${TEMPLATE_FLAGS//\{\{ALBUM\}\}/$ALBUM_NAME}"
-    fi
-
-    # Validate immich-go executable from .env
+    # Validate immich-go executable
     if [[ -z "${IMMICH_GO_EXECUTABLE:-}" ]]; then
         echo "IMMICH_GO_EXECUTABLE not set in .env"
         return 1
     fi
-
     if [[ ! -x "$IMMICH_GO_EXECUTABLE" ]]; then
         echo "IMMICH_GO_EXECUTABLE is not executable: $IMMICH_GO_EXECUTABLE"
         return 1
@@ -57,13 +28,59 @@ upload_to_immich() {
         return 1
     fi
 
-    # Run immich-go
-    echo "Uploading '$SRC' using template '$TEMPLATE'..."
-    "$IMMICH_GO_EXECUTABLE" upload from-folder \
-        --server "$IMMICH_SERVER" \
-        --api-key "$IMMICH_API_KEY" \
-        $TEMPLATE_FLAGS \
-        "$SRC"
+    # Base args
+    local args=(upload from-folder --server "$IMMICH_SERVER" --api-key "$IMMICH_API_KEY")
+
+    # Load template from .upload-templates.env if exists
+    if [[ -f ".upload-templates.env" ]]; then
+        source .upload-templates.env
+        local TEMPLATE_FLAGS="${!TEMPLATE:-}"
+        if [[ -n "$TEMPLATE_FLAGS" ]]; then
+            # Replace {{ALBUM}} placeholder
+            if [[ "$TEMPLATE_FLAGS" == *"{{ALBUM}}"* ]]; then
+                if [[ -z "$ALBUM" ]]; then
+                    echo "Error: Template '$TEMPLATE' requires an album name"
+                    return 1
+                fi
+                TEMPLATE_FLAGS="${TEMPLATE_FLAGS//\{\{ALBUM\}\}/\"$ALBUM\"}"
+            fi
+            args+=($TEMPLATE_FLAGS)
+        fi
+    fi
+
+    # Predefined template handling if not in .upload-templates.env
+    case "$TEMPLATE" in
+        into_album_tag)
+            [[ -z "$ALBUM" ]] && { echo "Error: into_album_tag requires album name"; return 1; }
+            args+=(--into-album "$ALBUM" --folder-as-tags)
+            ;;
+        into_album)
+            [[ -z "$ALBUM" ]] && { echo "Error: into_album requires album name"; return 1; }
+            args+=(--into-album "$ALBUM")
+            ;;
+        album_by_folder_tag)
+            args+=(--folder-as-album FOLDER --folder-as-tags)
+            ;;
+        album_by_path_tag)
+            args+=(--folder-as-album PATH --folder-as-tags)
+            ;;
+        dry_run)
+            args+=(--dry-run)
+            ;;
+        *)
+            if [[ -z "${TEMPLATE_FLAGS:-}" ]]; then
+                echo "Error: Unknown upload template '$TEMPLATE'"
+                return 1
+            fi
+            ;;
+    esac
+
+    echo "Uploading:"
+    echo "  Source  : $SRC"
+    echo "  Template: $TEMPLATE"
+    [[ -n "$ALBUM" ]] && echo "  Album   : $ALBUM"
+
+    "$IMMICH_GO_EXECUTABLE" "${args[@]}" "$SRC"
 
     echo "Upload complete."
 }

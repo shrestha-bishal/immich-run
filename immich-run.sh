@@ -29,20 +29,20 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -u|--upload)
-      # If next arg is missing or another flag → use default
       if [[ -z "${2:-}" || "$2" == -* ]]; then
-        UPLOAD_TEMPLATE="--into-album Uploads"
-        shift 1
+        UPLOAD_TEMPLATE="into_album"
+        UPLOAD_ALBUM="Uploads"
+        shift
       else
         UPLOAD_TEMPLATE="$2"
-        # Optional album name
         if [[ -n "${3:-}" && "$3" != -* ]]; then
           UPLOAD_ALBUM="$3"
-          shift 1
+          shift
         fi
         shift 2
       fi
       ;;
+
     -s|--source)
       SRC="$2"
       shift 2
@@ -89,4 +89,4 @@ if [[ -n "$UPLOAD_TEMPLATE" ]]; then
   upload_to_immich "$SRC" "$UPLOAD_TEMPLATE" "$UPLOAD_ALBUM"
 fi
 
-echo "Done."
+echo "Completed."
