@@ -15,59 +15,69 @@ organise_media() {
 
   declare -A PHOTOS
   declare -A MOVS
-  declare -A GOPROS
 
   shopt -s nullglob nocaseglob
 
-  ### Collect GoPro files (mp4 and lrv) - case insensitive
-  for f in "$SRC"/GX*.{mp4,MP4,lrv,LRV}; do
-    [[ -f "$f" ]] || continue
-    base="${f%.*}"
-    ext="${f##*.}"
-    ext="${ext,,}"  # lowercase
-    GOPROS["$base"]+="$ext "
-  done
+  # Check if any GoPro files exist
+  if compgen -G "$SRC"/GX*.{mp4,MP4} >/dev/null || compgen -G "$SRC"/GL*.{lrv,LRV} >/dev/null; then
+      mkdir -p "$GOPRO_DIR"
 
-  ### Process GoPro files
-  [[ -d "$GOPRO_DIR" ]] || mkdir -p "$GOPRO_DIR"
+      # Handle GX MP4s and delete matching GL LRVs
+      for gx in "$SRC"/GX*.{mp4,MP4}; do
+          [[ -f "$gx" ]] || continue
+          gx_fname="$(basename "$gx")"
+          gx_num="${gx_fname:2}"        # strip GX
+          gx_num="${gx_num%.*}"         # remove extension
 
-  for base in "${!GOPROS[@]}"; do
-    exts=" ${GOPROS[$base]} "
+          # Delete matching GL LRV
+          for gl in "$SRC"/GL*.[lL][rR][vV]; do
+              [[ -f "$gl" ]] || continue
+              gl_fname="$(basename "$gl")"
+              gl_num="${gl_fname:2}"        # strip GL
+              gl_num="${gl_num%.*}"         # remove extension
 
-    if [[ "$exts" == *" mp4 "* ]]; then
-      echo "GoPro MP4 found for $(basename "$base"): moving MP4"
+              if [[ "$gx_num" == "$gl_num" ]]; then
+                  echo "Deleting matching GL LRV: $gl_fname"
+                  rm -f "$gl"
+              fi
+          done
 
-      # Move MP4 (any case)
-      mv "$base".[mM][pP]4 "$GOPRO_DIR/"
-
-      # Delete ALL matching LRV files (any case)
-      for lrv in "$base".[lL][rR][vV]; do
-        [[ -f "$lrv" ]] || continue
-        echo "Deleting LRV: $(basename "$lrv")"
-        rm -f "$lrv"
+          echo "Moving GX MP4: $gx_fname"
+          mv "$gx" "$GOPRO_DIR/"
       done
 
-    elif [[ "$exts" == *" lrv "* ]]; then
-      echo "Only LRV found for $(basename "$base"): moving LRV"
-      mv "$base".[lL][rR][vV] "$GOPRO_DIR/"
-    fi
-  done
+      # Move orphaned GL LRVs
+      for gl in "$SRC"/GL*.[lL][rR][vV]; do
+          [[ -f "$gl" ]] || continue
+          gl_fname="$(basename "$gl")"
+          gl_num="${gl_fname:2}"        # strip GL
+          gl_num="${gl_num%.*}"         # remove extension
 
-  ### Collect photos (case-insensitive)
+          # Skip if matching GX MP4 exists
+          if compgen -G "$SRC/GX$gl_num.{mp4,MP4}" >/dev/null; then
+              continue
+          fi
+
+          echo "Moving orphan GL LRV: $gl_fname"
+          mv "$gl" "$GOPRO_DIR/"
+      done
+  fi
+    
+  ## Collect photos (case-insensitive)
   for f in "$SRC"/*.{jpg,JPG,jpeg,JPEG,heic,HEIC,png,PNG}; do
     [[ -f "$f" ]] || continue
     base="$(basename "${f%.*}")"
     PHOTOS["$base"]="$f"
   done
 
-  ### Collect videos (case-insensitive)
+  ## Collect videos (case-insensitive)
   for f in "$SRC"/*.{mov,MOV,mp4,MP4,3gp}; do
     [[ -f "$f" ]] || continue
     base="$(basename "${f%.*}")"
     MOVS["$base"]="$f"
   done
 
-  ### Process videos & Live Photos
+  ## Process videos & Live Photos
   for base in "${!MOVS[@]}"; do
     mov="${MOVS[$base]}"
     if [[ -n "${PHOTOS[$base]:-}" ]]; then
@@ -83,7 +93,7 @@ organise_media() {
     fi
   done
 
-  ### Remaining photos
+  ## Remaining photos
   for base in "${!PHOTOS[@]}"; do
     if [[ -z "${MOVS[$base]:-}" ]]; then
       [[ -d "$PHOTO_DIR" ]] || mkdir -p "$PHOTO_DIR"
@@ -92,7 +102,7 @@ organise_media() {
     fi
   done
 
-  ### Delete .aae and .THM files (case-insensitive)
+  ## Delete .aae and .THM files (case-insensitive)
   for f in "$SRC"/*.{AAE,aae,THM,thm}; do
     [[ -f "$f" ]] || continue
     echo "Deleting file: $(basename "$f")"
