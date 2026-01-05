@@ -64,7 +64,7 @@ organise_media() {
   fi
     
   ## Collect photos (case-insensitive)
-  for f in "$SRC"/*.{jpg,JPG,jpeg,JPEG,heic,HEIC,png,PNG,nef,NEF,cr2,CR2}; do
+  for f in "$SRC"/*.{jpg,JPG,jpeg,JPEG,heic,HEIC,png,PNG,nef,NEF,cr2,CR2,arw,ARW}; do
     [[ -f "$f" ]] || continue
     base="$(basename "${f%.*}")"
     PHOTOS["$base"]="$f"
