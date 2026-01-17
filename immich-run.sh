@@ -79,6 +79,8 @@ fi
 if [[ "$ORGANISE" == true ]]; then
   echo "Running media organisation..."
   source ./scripts/organise.sh
+  rename_collisions_as_pairs "$SRC"
+  flatten_subfolders "$SRC"
   organise_media "$SRC"
 fi
 
