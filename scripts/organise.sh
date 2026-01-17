@@ -14,62 +14,76 @@ organise_media() {
   GOPRO_DIR="$SRC/gopro"
 
   # Photo file extensions (case-insensitive)
-  readonly PHOTO_EXTENSIONS="jpg JPG jpeg JPEG heic HEIC png PNG nef NEF cr2 CR2 arw ARW"
-  readonly VIDEO_EXTENSIONS="mov MOV mp4 MP4 3gp"
-  readonly DELETE_EXTENSIONS="aae thm"
+  readonly PHOTO_EXTENSIONS=(jpg jpeg heic png nef cr2 arw)
+  readonly VIDEO_EXTENSIONS=(mov mp4 3gp)
+  readonly DELETE_EXTENSIONS=(aae thm)
+  readonly GOPRO_HIGHRES=("GX*.mp4")
+  readonly GOPRO_PREVIEW=("GL*.lrv")
 
   declare -A PHOTOS
   declare -A MOVS
 
   shopt -s nullglob nocaseglob
 
-  # Check if any GoPro files exist
-  if compgen -G "$SRC"/GX*.{mp4,MP4} >/dev/null || compgen -G "$SRC"/GL*.{lrv,LRV} >/dev/null; then
-      mkdir -p "$GOPRO_DIR"
+  # handle GoPro files
+  local gx_files=()
+  for pattern in "${GOPRO_HIGHRES[@]}"; do
+    gx_files+=( "$SRC"/$pattern )
+  done
 
-      # Handle GX MP4s and delete matching GL LRVs
-      for gx in "$SRC"/GX*.{mp4,MP4}; do
-          [[ -f "$gx" ]] || continue
-          gx_fname="$(basename "$gx")"
-          gx_num="${gx_fname:2}"        # strip GX
-          gx_num="${gx_num%.*}"         # remove extension
+  local gl_files=()
+  for pattern in "${GOPRO_PREVIEW[@]}"; do
+    gl_files+=( "$SRC"/$pattern )
+  done
 
-          # Delete matching GL LRV
-          for gl in "$SRC"/GL*.[lL][rR][vV]; do
-              [[ -f "$gl" ]] || continue
-              gl_fname="$(basename "$gl")"
-              gl_num="${gl_fname:2}"        # strip GL
-              gl_num="${gl_num%.*}"         # remove extension
+  # Only proceed if there are any GX or GL files
+  if (( ${#gx_files[@]} > 0 || ${#gl_files[@]} > 0 )); then
+    mkdir -p "$GOPRO_DIR"
 
-              if [[ "$gx_num" == "$gl_num" ]]; then
-                  echo "Deleting matching GL LRV: $gl_fname"
-                  rm -f "$gl"
-              fi
-          done
+    # Move GX high-res and delete matching GL previews
+    for gx in "${gx_files[@]}"; do
+      [[ -f "$gx" ]] || continue
+      gx_fname="$(basename "$gx")"
+      gx_num="${gx_fname:2}"          # strip GX
+      gx_num="${gx_num%.*}"           # remove extension
 
-          echo "Moving GX MP4: $gx_fname"
-          mv "$gx" "$GOPRO_DIR/"
+      # Delete matching GL LRV
+      for gl in "${gl_files[@]}"; do
+        [[ -f "$gl" ]] || continue
+        gl_fname="$(basename "$gl")"
+        gl_num="${gl_fname:2}"
+        gl_num="${gl_num%.*}"
+
+        if [[ "$gx_num" == "$gl_num" ]]; then
+          echo "Deleting matching GL LRV: $gl_fname"
+          rm -f "$gl"
+        fi
       done
 
-      # Move orphaned GL LRVs
-      for gl in "$SRC"/GL*.[lL][rR][vV]; do
-          [[ -f "$gl" ]] || continue
-          gl_fname="$(basename "$gl")"
-          gl_num="${gl_fname:2}"        # strip GL
-          gl_num="${gl_num%.*}"         # remove extension
+      echo "Moving GX MP4: $gx_fname"
+      mv "$gx" "$GOPRO_DIR/"
+    done
 
-          # Skip if matching GX MP4 exists
-          if compgen -G "$SRC/GX$gl_num.{mp4,MP4}" >/dev/null; then
-              continue
-          fi
+    # Move orphaned GL LRVs
+    for gl in "${gl_files[@]}"; do
+      [[ -f "$gl" ]] || continue
+      gl_fname="$(basename "$gl")"
+      gl_num="${gl_fname:2}"
+      gl_num="${gl_num%.*}"
 
-          echo "Moving orphan GL LRV: $gl_fname"
-          mv "$gl" "$GOPRO_DIR/"
-      done
+      # Skip if matching GX exists
+      gx_match=("$SRC"/GX"$gl_num".{mp4,MP4})
+      if [[ -f "${gx_match[0]}" ]]; then
+        continue
+      fi
+
+      echo "Moving orphan GL LRV: $gl_fname"
+      mv "$gl" "$GOPRO_DIR/"
+    done
   fi
-    
+
   ## Collect photos (case-insensitive)
-  for ext in $PHOTO_EXTENSIONS; do
+  for ext in "${PHOTO_EXTENSIONS[@]}"; do
     for f in "$SRC"/*.$ext; do
       [[ -f "$f" ]] || continue
       base="$(basename "${f%.*}")"
@@ -78,7 +92,7 @@ organise_media() {
   done
 
   ## Collect videos (case-insensitive)
-  for ext in $VIDEO_EXTENSIONS; do
+  for ext in "${VIDEO_EXTENSIONS[@]}"; do
     for f in "$SRC"/*.$ext; do
       [[ -f "$f" ]] || continue
       base="$(basename "${f%.*}")"
@@ -112,7 +126,7 @@ organise_media() {
   done
 
   ## Delete .aae and .THM files (case-insensitive)
-  for ext in $DELETE_EXTENSIONS; do
+  for ext in "${DELETE_EXTENSIONS[@]}"; do
     for f in "$SRC"/*.$ext; do
       [[ -f "$f" ]] || continue
       echo "Deleting file: $(basename "$f")"
@@ -185,7 +199,7 @@ rename_collisions_as_pairs() {
   echo "Scanning for potential collisions and syncing pairs..."
 
   # Find all files in subfolders (level 2 or deeper)
-  find "$ROOT" -mindepth 2 -type f -print0 | while IFS= read -r -d '' file; do
+  while IFS= read -r -d '' file; do
     # Skip if file was already moved/renamed by a previous iteration in this loop
     [[ -f "$file" ]] || continue
 
@@ -232,6 +246,6 @@ rename_collisions_as_pairs() {
         mv -- "$sub_file" "$dir/${new_base}.${sub_ext}"
       done
     fi
-  done
+  done < <(find "$ROOT" -mindepth 2 -type f -print0)
   shopt -u nullglob nocaseglob
 }
