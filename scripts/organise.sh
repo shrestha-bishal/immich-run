@@ -13,6 +13,11 @@ organise_media() {
   VIDEO_DIR="$SRC/video"
   GOPRO_DIR="$SRC/gopro"
 
+  # Photo file extensions (case-insensitive)
+  readonly PHOTO_EXTENSIONS="jpg JPG jpeg JPEG heic HEIC png PNG nef NEF cr2 CR2 arw ARW"
+  readonly VIDEO_EXTENSIONS="mov MOV mp4 MP4 3gp"
+  readonly DELETE_EXTENSIONS="aae thm"
+
   declare -A PHOTOS
   declare -A MOVS
 
@@ -64,17 +69,21 @@ organise_media() {
   fi
     
   ## Collect photos (case-insensitive)
-  for f in "$SRC"/*.{jpg,JPG,jpeg,JPEG,heic,HEIC,png,PNG,nef,NEF,cr2,CR2,arw,ARW}; do
-    [[ -f "$f" ]] || continue
-    base="$(basename "${f%.*}")"
-    PHOTOS["$base"]="$f"
+  for ext in $PHOTO_EXTENSIONS; do
+    for f in "$SRC"/*.$ext; do
+      [[ -f "$f" ]] || continue
+      base="$(basename "${f%.*}")"
+      PHOTOS["$base"]="$f"
+    done
   done
 
   ## Collect videos (case-insensitive)
-  for f in "$SRC"/*.{mov,MOV,mp4,MP4,3gp}; do
-    [[ -f "$f" ]] || continue
-    base="$(basename "${f%.*}")"
-    MOVS["$base"]="$f"
+  for ext in $VIDEO_EXTENSIONS; do
+    for f in "$SRC"/*.$ext; do
+      [[ -f "$f" ]] || continue
+      base="$(basename "${f%.*}")"
+      MOVS["$base"]="$f"
+    done
   done
 
   ## Process videos & Live Photos
@@ -103,10 +112,12 @@ organise_media() {
   done
 
   ## Delete .aae and .THM files (case-insensitive)
-  for f in "$SRC"/*.{AAE,aae,THM,thm}; do
-    [[ -f "$f" ]] || continue
-    echo "Deleting file: $(basename "$f")"
-    rm -f "$f"
+  for ext in $DELETE_EXTENSIONS; do
+    for f in "$SRC"/*.$ext; do
+      [[ -f "$f" ]] || continue
+      echo "Deleting file: $(basename "$f")"
+      rm -f "$f"
+    done
   done
 
   shopt -u nullglob nocaseglob
