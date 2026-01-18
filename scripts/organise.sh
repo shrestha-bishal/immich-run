@@ -14,7 +14,7 @@ organise_media() {
   GOPRO_DIR="$SRC/gopro"
 
   # Photo file extensions (case-insensitive)
-  readonly PHOTO_EXTENSIONS=(jpg jpeg heic png nef cr2 arw)
+  readonly PHOTO_EXTENSIONS=(jpg jpeg heic png nef cr2 arw webp)
   readonly VIDEO_EXTENSIONS=(mov mp4 3gp)
   readonly DELETE_EXTENSIONS=(aae thm)
   readonly GOPRO_HIGHRES=("GX*.mp4")
