@@ -15,7 +15,7 @@ organise_media() {
 
   # Photo file extensions (case-insensitive)
   readonly PHOTO_EXTENSIONS=(jpg jpeg heic png nef cr2 arw webp JPG JPEG HEIC PNG NEF CR2 ARW WEBP)
-  readonly VIDEO_EXTENSIONS=(mov mp4 3gp gif MOV MP4 3GP GIF)
+  readonly VIDEO_EXTENSIONS=(mov mp4 3gp gif avi MOV MP4 3GP GIF AVI)
   readonly DELETE_EXTENSIONS=(aae thm)
   readonly GOPRO_HIGHRES=("GX*.mp4")
   readonly GOPRO_PREVIEW=("GL*.lrv")
